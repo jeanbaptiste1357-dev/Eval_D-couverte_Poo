@@ -1,81 +1,90 @@
+/**
+ * Machine à café : gère les stocks, le crédit et l'usure.
+ */
 public class Machine {
-    public static final int MAX_EAU = 100; // cl
-    public static final int MAX_GRAINS = 50; // g
-    public static final int MAX_GOBELETS = 10; // unités
-    public static final int USURE_MAX = 5; // cafés avant entartrage
+    // Capacités et limites
+    private static final int MAX_EAU = 100;       // cl
+    private static final int MAX_GRAINS = 50;     // g
+    private static final int MAX_GOBELETS = 10;   // unités
+    private static final int USURE_MAX = 5;       // cafés avant entartrage
 
-    private int eau;
-    private int grains;
-    private int gobelets;
-    private int compteurCafes;
-    private double monnayeur; // crédit en cours
-    private double caisse; // total encaissé
+    // État interne
+    private int eau;           // cl
+    private int grains;        // g
+    private int gobelets;      // unités
+    private int compteurCafes; // nb de cafés servis
+
+    private double credit;     // montant inséré non dépensé
+    private double caisse;     // total encaissé
 
     public Machine() {
         this.eau = MAX_EAU;
         this.grains = MAX_GRAINS;
         this.gobelets = MAX_GOBELETS;
         this.compteurCafes = 0;
-        this.monnayeur = 0.0;
+        this.credit = 0.0;
         this.caisse = 0.0;
     }
 
-    public synchronized String insererMonnaie(double montant) {
-        if (montant <= 0) return "Montant invalide";
-        this.monnayeur += montant;
-        return String.format("Crédit actuel : %.2f €", this.monnayeur);
+    /** Insérer de la monnaie */
+    public String insererMonnaie(double montant) {
+        if (montant <= 0) {
+            return "Montant invalide";
+        }
+        credit += montant;
+        return String.format("Crédit : %.2f €", credit);
     }
 
-    public synchronized String servir(Recette r) {
-        if (this.compteurCafes >= USURE_MAX) {
+    /** Tenter de servir une recette. Retourne un message résultat. */
+    public String servir(Recette recette) {
+        if (compteurCafes >= USURE_MAX) {
             return "ERREUR : Machine entartrée - Appelez le technicien";
         }
 
-        if (this.monnayeur < r.prix) {
+        if (credit < recette.prix) {
             return "Crédit insuffisant, ajoutez de la monnaie";
         }
 
-        if (this.eau < r.eauCl) return "Plus d'eau !";
-        if (this.grains < r.grainsG) return "Plus de grains !";
-        if (this.gobelets < r.gobelets) return "Plus de gobelets !";
+        if (eau < recette.eauCl) return "Plus d'eau !";
+        if (grains < recette.grainsG) return "Plus de grains !";
+        if (gobelets < recette.gobelets) return "Plus de gobelets !";
 
-        // Exécution de la commande
-        this.eau -= r.eauCl;
-        this.grains -= r.grainsG;
-        this.gobelets -= r.gobelets;
-        this.monnayeur -= r.prix;
-        this.caisse += r.prix;
-        this.compteurCafes += 1;
+        // Consommer les ressources et mettre à jour les compteurs
+        eau -= recette.eauCl;
+        grains -= recette.grainsG;
+        gobelets -= recette.gobelets;
+        credit -= recette.prix;
+        caisse += recette.prix;
+        compteurCafes++;
 
         return "Votre café est prêt !";
     }
 
-    // Menu technicien
-    public synchronized void recharger() {
+    // Opérations technicien
+    public void recharger() {
         this.eau = MAX_EAU;
         this.grains = MAX_GRAINS;
         this.gobelets = MAX_GOBELETS;
     }
 
-    public synchronized void detartrer() {
-        this.compteurCafes = 0;
-    }
+    public void detartrer() { this.compteurCafes = 0; }
 
-    public synchronized double recupererCaisse() {
+    public double recupererCaisse() {
         double montant = this.caisse;
         this.caisse = 0.0;
         return montant;
     }
 
-    public synchronized String etat() {
-        return String.format(
-            "Etat de la machine:\n- Eau : %d/%d cl\n- Grains : %d/%d g\n- Gobelets : %d/%d\n- Compteur cafés (usure) : %d/%d\n- Crédit (monnayeur) : %.2f €\n- Caisse : %.2f €",
-            this.eau, MAX_EAU,
-            this.grains, MAX_GRAINS,
-            this.gobelets, MAX_GOBELETS,
-            this.compteurCafes, USURE_MAX,
-            this.monnayeur,
-            this.caisse
-        );
+    /** Retourne un résumé lisible de l'état de la machine. */
+    public String etat() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Etat machine:\n");
+        sb.append(String.format("- Eau : %d/%d cl\n", eau, MAX_EAU));
+        sb.append(String.format("- Grains : %d/%d g\n", grains, MAX_GRAINS));
+        sb.append(String.format("- Gobelets : %d/%d\n", gobelets, MAX_GOBELETS));
+        sb.append(String.format("- Compteur cafés : %d/%d\n", compteurCafes, USURE_MAX));
+        sb.append(String.format("- Crédit : %.2f €\n", credit));
+        sb.append(String.format("- Caisse : %.2f €", caisse));
+        return sb.toString();
     }
 }
